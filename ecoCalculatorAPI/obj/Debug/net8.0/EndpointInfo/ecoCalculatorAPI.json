@@ -1,0 +1,107 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ecoCalculatorAPI",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/Eco": {
+      "post": {
+        "tags": [
+          "Eco"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Co2Request"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Co2Request"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Co2Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Eco/municipios": {
+      "get": {
+        "tags": [
+          "Eco"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Co2Request": {
+        "type": "object",
+        "properties": {
+          "origem": {
+            "type": "string",
+            "nullable": true
+          },
+          "destino": {
+            "type": "string",
+            "nullable": true
+          },
+          "formato": {
+            "$ref": "#/components/schemas/ContainerFormat"
+          },
+          "tipoContainer": {
+            "$ref": "#/components/schemas/ContainerType"
+          },
+          "quantidade": {
+            "type": "number",
+            "format": "double"
+          },
+          "carregamento": {
+            "$ref": "#/components/schemas/ContainerLoad"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContainerFormat": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "ContainerLoad": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "ContainerType": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      }
+    }
+  }
+}

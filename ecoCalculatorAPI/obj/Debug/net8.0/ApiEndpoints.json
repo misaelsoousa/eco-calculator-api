@@ -1,0 +1,28 @@
+[
+  {
+    "ContainingType": "ecoCalculatorAPI.Controllers.EcoController",
+    "Method": "Register",
+    "RelativePath": "api/Eco",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "EcoCalculator.Communication.Requests.Co2Request",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "ecoCalculatorAPI.Controllers.EcoController",
+    "Method": "GetCity",
+    "RelativePath": "api/Eco/municipios",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]

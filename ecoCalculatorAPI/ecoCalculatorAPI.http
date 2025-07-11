@@ -1,0 +1,67 @@
+@ecoCalculatorAPI_HostAddress = http://localhost:5128
+
+GET {{ecoCalculatorAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+# Teste simples da API do Google Maps
+GET {{ecoCalculatorAPI_HostAddress}}/api/eco/teste-simples
+Accept: application/json
+
+###
+
+# Teste direto da API key do Google Maps
+GET {{ecoCalculatorAPI_HostAddress}}/api/eco/teste-api-key
+Accept: application/json
+
+###
+
+# Teste completo da API key
+GET {{ecoCalculatorAPI_HostAddress}}/api/eco/testar-api-key
+Accept: application/json
+
+###
+
+# Teste do cálculo de CO2 com cidades que existem na base de dados
+POST {{ecoCalculatorAPI_HostAddress}}/api/eco
+Content-Type: application/json
+
+{
+  "origem": "São Paulo",
+  "destino": "Rio de Janeiro",
+  "formato": 0,
+  "tipo": 0,
+  "quantidade": 10,
+  "carregamento": 0
+}
+
+###
+
+# Teste com cidades menores da base de dados
+POST {{ecoCalculatorAPI_HostAddress}}/api/eco
+Content-Type: application/json
+
+{
+  "origem": "Abadia de Goiás",
+  "destino": "Abadia dos Dourados",
+  "formato": 0,
+  "tipo": 0,
+  "quantidade": 5,
+  "carregamento": 0
+}
+
+###
+
+# Teste com cidades de diferentes estados
+POST {{ecoCalculatorAPI_HostAddress}}/api/eco
+Content-Type: application/json
+
+{
+  "origem": "Brasília",
+  "destino": "Goiânia",
+  "formato": 0,
+  "tipo": 0,
+  "quantidade": 8,
+  "carregamento": 0
+}
