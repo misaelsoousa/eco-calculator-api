@@ -2,6 +2,7 @@
 using EcoCalculator.Communication.Responses;
 using ecoCalculatorAPI.Entities;
 using System.Text.Json;
+using System.Globalization;
 
 namespace ecoCalculatorAPI.UseCases;
 
@@ -72,80 +73,91 @@ public class Co2Calculation
         return input.Trim();
     }
 
+
     public async Task<Dictionary<string, object>> CalcularEmissoes(Co2Request request)
     {
         await LoadData();
         var variaveis = MemoryData.Data.Variaveis;
-        var rotas = MemoryData.Data.OrigemDestino;
         var municipios = MemoryData.Data.Municipios;
+        var portos = MemoryData.Data.ConsumoPortos;
+        var servicos = MemoryData.Data.Servicos;
+        var rotas = MemoryData.Data.OrigemDestino;
 
         var nomeCidadeOrigem = ExtrairCidade(request.Origem);
         var nomeCidadeDestino = ExtrairCidade(request.Destino);
-
         var municipioOrigem = municipios.FirstOrDefault(m => m.Cidade.Equals(nomeCidadeOrigem, StringComparison.OrdinalIgnoreCase));
         var municipioDestino = municipios.FirstOrDefault(m => m.Cidade.Equals(nomeCidadeDestino, StringComparison.OrdinalIgnoreCase));
-
         if (municipioOrigem == null || municipioDestino == null)
             throw new Exception("Cidade de origem ou destino não encontrada no banco de municípios.");
 
         var portoOrigem = municipioOrigem.PortoProximo;
         var portoDestino = municipioDestino.PortoProximo;
-
-        string origemCompleta = $"{municipioOrigem.Cidade}, {municipioOrigem.Estado}";
-        string destinoCompleta = $"{municipioDestino.Cidade}, {municipioDestino.Estado}";
-
-        var portos = MemoryData.Data.ConsumoPortos;
         var portoOrigemObj = portos.FirstOrDefault(p => p.Code == portoOrigem);
         var portoDestinoObj = portos.FirstOrDefault(p => p.Code == portoDestino);
         var portoOrigemNome = portoOrigemObj?.Port ?? portoOrigem;
         var portoDestinoNome = portoDestinoObj?.Port ?? portoDestino;
 
-        var servicos = MemoryData.Data.Servicos;
-        float consumoPortoOrigem = servicos.FirstOrDefault(s => s.Porto == portoOrigem)?.Consumo ?? 0.002f;
-        float consumoPortoDestino = servicos.FirstOrDefault(s => s.Porto == portoDestino)?.Consumo ?? 0.002f;
+        string origemCompleta = $"{municipioOrigem.Cidade}, {municipioOrigem.Estado}";
+        string destinoCompleta = $"{municipioDestino.Cidade}, {municipioDestino.Estado}";
 
-        double tempoPortoOrigem = 0;
-        double tempoPortoDestino = 0;
-        double.TryParse(portoOrigemObj?.AverageH, System.Globalization.CultureInfo.InvariantCulture, out tempoPortoOrigem);
-        double.TryParse(portoDestinoObj?.AverageH, System.Globalization.CultureInfo.InvariantCulture, out tempoPortoDestino);
-
-        double tonFfeKmTruck = double.Parse(variaveis.First(v => v.Descricao == "ton_ffe_km_truck").Valor.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
-        double tonFfeKmDry = double.Parse(variaveis.First(v => v.Descricao == "ton_ffe_km_dry").Valor.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
-        double tonFfeKmReefer = double.Parse(variaveis.First(v => v.Descricao == "ton_ffe_km_reefer").Valor.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
-        double conversaoTonTeu = double.Parse(variaveis.First(v => v.Descricao == "conversao_ton_teu").Valor.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
-
-        double fatorMaritimo = request.Formato == EcoCalculator.Communication.Enums.ContainerFormat.Reefer ? tonFfeKmReefer : tonFfeKmDry;
-
-        double quantidadeTon = request.Quantidade > 0 ? request.Quantidade : 1;
+        double quantidade = request.Quantidade > 0 ? request.Quantidade : 1;
+        double conteiner = 0;
         if (request.Carregamento == EcoCalculator.Communication.Enums.ContainerLoad.TEU)
         {
             if (request.TipoContainer == EcoCalculator.Communication.Enums.ContainerType.Forty)
-                quantidadeTon = quantidadeTon * 2 * conversaoTonTeu;
+                conteiner = Math.Ceiling(quantidade / 10.0); 
             else
-                quantidadeTon = quantidadeTon * conversaoTonTeu;
+                conteiner = quantidade;
+            conteiner = ((conteiner + 0.5) * 2.5) / 6.32996;
+            conteiner = Math.Ceiling(conteiner);
+        }
+        else
+        {
+            conteiner = Math.Ceiling(quantidade / 10.0);
+            conteiner = ((conteiner + 0.5) * 2.5) / 6.32996;
+            conteiner = Math.Ceiling(conteiner);
         }
 
+        // Fatores do data.json
+        double consumoRodoviario = double.Parse(variaveis.First(v => v.Descricao == "consumo").Valor.Replace(',', '.'), CultureInfo.InvariantCulture);
+        double lCombKgCo2 = double.Parse(variaveis.First(v => v.Descricao == "combustivel_por_kgco2").Valor.Replace(',', '.'), CultureInfo.InvariantCulture);
+        double fatorRodoviario = consumoRodoviario * lCombKgCo2 / 1000.0;
+        double fatorDry = double.Parse(variaveis.First(v => v.Descricao == "conversao_combustivel_co2_dry").Valor.Replace(',', '.'), CultureInfo.InvariantCulture);
+        double fatorReefer = double.Parse(variaveis.First(v => v.Descricao == "conversao_combustivel_co2_reefer").Valor.Replace(',', '.'), CultureInfo.InvariantCulture);
+        double fatorMaritimo = request.Formato == EcoCalculator.Communication.Enums.ContainerFormat.Reefer ? fatorReefer : fatorDry;
+
         double distanciaOrigemPorto = await BuscarDistanciaGoogle(origemCompleta, portoOrigemNome);
-        double distanciaPortoPorto = await BuscarDistanciaGoogle(portoOrigemNome, portoDestinoNome);
         double distanciaPortoDestino = await BuscarDistanciaGoogle(portoDestinoNome, destinoCompleta);
+        double distanciaPortoPorto = await BuscarDistanciaGoogle(portoOrigemNome, portoDestinoNome);
 
-        double emissaoAtividadePortoOrigem = Math.Round(quantidadeTon * consumoPortoOrigem * tempoPortoOrigem, 4);
-        double emissaoAtividadePortoDestino = Math.Round(quantidadeTon * consumoPortoDestino * tempoPortoDestino, 4);
+        float consumoPortoOrigem = servicos.FirstOrDefault(s => s.Porto == portoOrigem)?.Consumo ?? 0.002f;
+        float consumoPortoDestino = servicos.FirstOrDefault(s => s.Porto == portoDestino)?.Consumo ?? 0.002f;
+        double tempoPortoOrigem = 0, tempoPortoDestino = 0;
+        double.TryParse(portoOrigemObj?.AverageH, System.Globalization.CultureInfo.InvariantCulture, out tempoPortoOrigem);
+        double.TryParse(portoDestinoObj?.AverageH, System.Globalization.CultureInfo.InvariantCulture, out tempoPortoDestino);
+        double relAtivPorto = (consumoPortoOrigem * tempoPortoOrigem + consumoPortoDestino * tempoPortoDestino) * conteiner * fatorMaritimo;
 
-        double emissaoCabotagem = Math.Round(distanciaPortoPorto * fatorMaritimo * quantidadeTon, 4);
+        var navios = MemoryData.Data.Navios;
+        double velocidadeNos = double.Parse(variaveis.First(v => v.Descricao == "velocidade_nos").Valor.Replace(',', '.'), CultureInfo.InvariantCulture);
+        double capacidadeTeus = double.Parse(variaveis.First(v => v.Descricao == "capacidade_teus").Valor.Replace(',', '.'), CultureInfo.InvariantCulture);
+        var navioMaisProximo = navios.OrderBy(n => Math.Abs(n.Nos - velocidadeNos)).First();
+        double consumoPorNos = navioMaisProximo.Consumo;
+        double velocidadeKmDia = velocidadeNos * 44.448;
+        double consumoPorTeuKm = consumoPorNos / (capacidadeTeus * velocidadeKmDia);
+        double relCabotagem = distanciaPortoPorto * conteiner * consumoPorTeuKm * fatorMaritimo;
 
-        double emissaoRodoviarioOrigem = Math.Round(distanciaOrigemPorto * tonFfeKmTruck * quantidadeTon, 4);
-        double emissaoRodoviarioDestino = Math.Round(distanciaPortoDestino * tonFfeKmTruck * quantidadeTon, 4);
-        double emissaoRodoviario = emissaoRodoviarioOrigem + emissaoRodoviarioDestino;
-        double emissaoTotal = emissaoRodoviario + emissaoAtividadePortoOrigem + emissaoCabotagem + emissaoAtividadePortoDestino;
-        double emissaoRodoviarioPuro = Math.Round((distanciaOrigemPorto + distanciaPortoPorto + distanciaPortoDestino) * tonFfeKmTruck * quantidadeTon, 4);
-        double economiaCo2 = emissaoRodoviarioPuro - emissaoTotal;
-        if (economiaCo2 < 0) economiaCo2 = 0;
+        double relRodoviario = (distanciaOrigemPorto + distanciaPortoPorto + distanciaPortoDestino) * conteiner * fatorRodoviario;
 
-        int arvores = (int)Math.Round(economiaCo2 * 16.5);
-        double gelo = Math.Round(economiaCo2 * 3, 2);
-        int caminhoes = (int)Math.Round(economiaCo2 / 3.5);
-        int creditos = (int)Math.Round(economiaCo2 / 1.2);
+        double relPortaPorto = distanciaOrigemPorto * conteiner * fatorRodoviario;
+        double relPortoPorta = distanciaPortoDestino * conteiner * fatorRodoviario;
+
+        double totalMercosul = relPortaPorto + relAtivPorto + relCabotagem + relPortoPorta;
+        double economia = Math.Round(relRodoviario - totalMercosul, 2);
+        if (economia < 0) economia = 0;
+        int arvores = (int)Math.Round(economia / 0.060493, 0);
+        double gelo = Math.Round(economia * 3, 1);
+        int caminhoes = (int)Math.Ceiling(2.5 * (Math.Ceiling(quantidade) + 0.5) / 6.32996);
+        int creditos = (int)Math.Floor(economia);
 
         var etapas = new List<EcoCalculator.Communication.Responses.EtapaTransporte>
         {
@@ -154,34 +166,34 @@ public class Co2Calculation
                 Origem = $"{municipioOrigem.Cidade}, {municipioOrigem.Estado}",
                 Destino = portoOrigemNome,
                 Tipo = "Rodoviário",
-                EmissaoCo2 = Math.Round(emissaoRodoviarioOrigem, 2)
+                EmissaoCo2 = Math.Round(relPortaPorto, 2)
             },
             new EcoCalculator.Communication.Responses.EtapaTransporte
             {
                 Tipo = "Atividade Portuária",
-                  EmissaoCo2 = Math.Round(emissaoAtividadePortoOrigem + emissaoAtividadePortoDestino, 2)
+                EmissaoCo2 = Math.Round(relAtivPorto, 2)
             },
             new EcoCalculator.Communication.Responses.EtapaTransporte
             {
                 Origem = portoOrigemNome,
                 Destino = portoDestinoNome,
                 Tipo = "Cabotagem",
-               EmissaoCo2 = Math.Round(emissaoCabotagem, 2)
+                EmissaoCo2 = Math.Round(relCabotagem, 2)
             },
             new EcoCalculator.Communication.Responses.EtapaTransporte
             {
                 Origem = portoDestinoNome,
                 Destino = $"{municipioDestino.Cidade}, {municipioDestino.Estado}",
                 Tipo = "Rodoviário",
-                EmissaoCo2 = Math.Round(emissaoRodoviarioDestino, 2)
+                EmissaoCo2 = Math.Round(relPortoPorta, 2)
             }
         };
 
         var response = new EcoCalculator.Communication.Responses.Co2ReportResponse
         {
-            EmissaoRodoviario = Math.Round(emissaoRodoviarioPuro, 2),
-            EmissaoMaritimo = Math.Round(emissaoTotal, 2),
-            EconomiaCo2 = Math.Round(economiaCo2, 2),
+            EmissaoRodoviario = Math.Round(relRodoviario, 2),
+            EmissaoMaritimo = Math.Round(totalMercosul, 2),
+            EconomiaCo2 = Math.Round(economia, 2),
             Equivalencias = new EcoCalculator.Communication.Responses.Equivalencias
             {
                 ArvoresPlantadas = arvores,

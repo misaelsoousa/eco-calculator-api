@@ -9,3 +9,4 @@ C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\EcoCalculator.Communication\
 C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\EcoCalculator.Communication\obj\Debug\net8.0\refint\EcoCalculator.Communication.dll
 C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\EcoCalculator.Communication\obj\Debug\net8.0\EcoCalculator.Communication.pdb
 C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\EcoCalculator.Communication\obj\Debug\net8.0\ref\EcoCalculator.Communication.dll
+C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\EcoCalculator.Communication\obj\Debug\net8.0\EcoCalculator.Communication.sourcelink.json

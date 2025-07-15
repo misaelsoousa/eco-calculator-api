@@ -32,3 +32,4 @@ C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\ecoCalculatorAPI\obj\Debug\n
 C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\ecoCalculatorAPI\bin\Debug\net8.0\EcoCalculator.Communication.dll
 C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\ecoCalculatorAPI\bin\Debug\net8.0\EcoCalculator.Communication.pdb
 C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\ecoCalculatorAPI\bin\Debug\net8.0\Data\data.json
+C:\Users\PC GAMER\Desktop\Projetos\C#\ecoCalculator\ecoCalculatorAPI\obj\Debug\net8.0\ecoCalculatorAPI.sourcelink.json
